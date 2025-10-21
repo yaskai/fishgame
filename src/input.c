@@ -1,8 +1,7 @@
 #include "raylib.h"
 #include "input.h"
 
-void ProcessInput(InputState *state, float delta_time) 
-{
+void ProcessInput(InputState *state, float delta_time) {
 	// Poll input
 	if(IsGamepadAvailable(0))
 		PollInputGamepad(state);
@@ -12,8 +11,7 @@ void ProcessInput(InputState *state, float delta_time)
 	// TODO: Manage timers
 }
 
-void PollInputKeyboard(InputState *state) 
-{
+void PollInputKeyboard(InputState *state) {
 	state->move_x = 0;
 	state->move_y = 0;
 
@@ -26,6 +24,5 @@ void PollInputKeyboard(InputState *state)
 	state->jump = IsKeyDown(KEY_SPACE);
 }
 
-void PollInputGamepad(InputState *state)
-{
+void PollInputGamepad(InputState *state) {
 }

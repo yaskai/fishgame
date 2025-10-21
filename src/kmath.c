@@ -3,8 +3,7 @@
 #include "raymath.h"
 #include "kmath.h"
 
-float AngleLerp(float a, float b, float t)
-{
+float AngleLerp(float a, float b, float t) {
 	t *= 100.0f;
 	float d = b - a;
 
@@ -14,7 +13,6 @@ float AngleLerp(float a, float b, float t)
 	return a + (d * t);
 }
 
-float ILerp(float a, float b, float t, float delta_time)
-{
+float ILerp(float a, float b, float t, float delta_time) {
 	return 1 - Lerp(a, b, pow(t, delta_time));
 }

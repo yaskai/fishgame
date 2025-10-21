@@ -4,24 +4,20 @@
 #include "entity.h"
 #include "kmath.h"
 
-void EntInit(Entity *ent, uint8_t type)
-{
+void EntInit(Entity *ent, uint8_t type) {
 	
 }
 
-void EntUpdatePosition(Entity *ent, float dt) 
-{
+void EntUpdatePosition(Entity *ent, float dt) {
 	// Move entity by it's velocity scaled by delta time
 	ent->position = Vector2Add(ent->position, Vector2Scale(ent->velocity, dt));	
 }
 
-Vector2 EntCenter(Entity *ent) 
-{
+Vector2 EntCenter(Entity *ent) {
 	return Vector2Add(ent->position, ent->center_offset);
 }
 
-void EntOrbitStart(Entity *ent, Entity *orbit_body) 
-{
+void EntOrbitStart(Entity *ent, Entity *orbit_body) {
 	ent->orbit_data = (OrbitData){0};
 
 	Vector2 ent_center = EntCenter(ent);
@@ -37,10 +33,8 @@ void EntOrbitStart(Entity *ent, Entity *orbit_body)
 
 	Vector2 tangent = (Vector2){-dir.y, dir.x};
 	ent->orbit_angle = atan2f(dir.y, dir.x);
-	//ent->sprite_angle = atan2f(tangent.y, tangent.x) * RAD2DEG;
 
-	if(ent->type == ENT_PLAYER) 
-	{
+	if(ent->type == ENT_PLAYER) {
 		PlayerData *p = ent->data;
 		p->orbit_vel.y = 10;
 	}
@@ -54,8 +48,7 @@ void EntOrbitStart(Entity *ent, Entity *orbit_body)
 	ent->orbit_data.orbit_center = orb_center;
 }
 
-void EntOrbitUpdate(Entity *ent, Entity *orbit_body, float dt) 
-{
+void EntOrbitUpdate(Entity *ent, Entity *orbit_body, float dt) {
 	Vector2 ent_center = EntCenter(ent), orb_center = EntCenter(orbit_body);
 
 	Vector2 dir = (Vector2){cosf(ent->orbit_angle), sinf(ent->orbit_angle)};
@@ -68,14 +61,12 @@ void EntOrbitUpdate(Entity *ent, Entity *orbit_body, float dt)
 	float targ_spr_angle = atan2f(tangent.y, tangent.x) * RAD2DEG; 
 	ent->sprite_angle = AngleLerp(ent->sprite_angle, targ_spr_angle, 0.1f * dt);
 
-	if(ent->orbit_height <= ent->radius)
-	{
+	if(ent->orbit_height <= ent->radius) {
 		ent->orbit_height = ent->radius;
 		ent->flags |= ENT_GROUNDED;
 	}
 
-	if(ent->type == ENT_PLAYER)
-	{
+	if(ent->type == ENT_PLAYER) {
 		PlayerData *p = ent->data;
 		p->orbit_dir = dir;
 	}
@@ -91,8 +82,7 @@ void EntOrbitUpdate(Entity *ent, Entity *orbit_body, float dt)
 	ent->orbit_data.curr_pos = EntCenter(ent);
 }
 
-void OrbitDataDrawDebug(OrbitData *data) 
-{
+void OrbitDataDrawDebug(OrbitData *data) {
 	//DrawCircleV(data->initial_pos, 10, RAYWHITE);
 	//DrawLineV(data->edge, data->orbit_center, RAYWHITE);	
 	//DrawLineV(data->edge, data->initial_pos, RAYWHITE);	

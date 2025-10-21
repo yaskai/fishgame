@@ -12,6 +12,8 @@
 #define MAX_FISH		(ENT_ARENA_CAP/2)
 #define MAX_NPCS		8
 
+#define SHOW_DEBUG	0x01
+
 typedef struct {
 	uint16_t count;
 	Entity ents[ENT_ARENA_CAP];	
@@ -29,7 +31,7 @@ typedef struct {
 
 void EntHandlerInit(EntHandler *handler, SpriteLoader *sl, Camera2D *camera);
 void EntHandlerUpdate(EntHandler *handler, float dt);
-void EntHandlerDraw(EntHandler *handler);
+void EntHandlerDraw(EntHandler *handler, uint8_t flags);
 
 // Create an entity instance, returns entity's index, -1 if instance fails
 int16_t EntMake(EntHandler *handler, uint8_t type);
@@ -42,6 +44,7 @@ void ReserveDataAsteroid(EntHandler *handler, Entity *ent);
 void AsteroidSpawn(EntHandler *handler, Vector2 position);
 void FishSpawn(EntHandler *handler, Vector2 position);
 
+void FindPlayerOrbit(EntHandler *handler, float dt);
 void PlayerOrbitCast(EntHandler *handler);
 
 #endif

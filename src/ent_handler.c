@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <float.h>
@@ -7,6 +8,7 @@
 #include "ent_handler.h"
 #include "entity.h"
 
+// Maximum count of entity type array
 uint16_t type_max[] = {
 	MAX_PLAYERS,
 	MAX_FISH,
@@ -16,37 +18,35 @@ uint16_t type_max[] = {
 
 Vector2 ray_start;
 Vector2 ray_end;
+Vector2 ray_coll_point;
 
+// Entity reservation function prototype and array 
 typedef void(*ReserveDataFunc)(EntHandler *handler, Entity *ent);
 ReserveDataFunc data_reserve_funcs[] = { &ReserveDataPlayer, &ReserveDataFish, &ReserveDataNpc, &ReserveDataAsteroid };
 
+// Entity update function prototype and array 
 typedef void(*EntUpdateFunc)(Entity *ent, float dt);
 EntUpdateFunc ent_update_funcs[] = { &PlayerUpdate, &AsteroidUpdate, NULL, NULL };
 
+// Entity draw function prototype and array 
 typedef void(*EntDrawFunc)(Entity *ent, SpriteLoader *sl);
 EntDrawFunc ent_draw_funcs[] = { &PlayerDraw, &AsteroidDraw, NULL, NULL };
 
-void EntHandlerInit(EntHandler *handler, SpriteLoader *sprite_loader, Camera2D *camera) 
-{
+// Initialize entity handler 
+void EntHandlerInit(EntHandler *handler, SpriteLoader *sprite_loader, Camera2D *camera) {
 	handler->sprite_loader = sprite_loader;
 	handler->camera = camera;
 }
 
-void EntHandlerUpdate(EntHandler *handler, float dt) 
-{
-	int16_t nearest_body_id = -1;
-	int16_t cast_body_id = -1;
-	float nearest_body_dist = FLT_MAX;
+// Update all entities
+void EntHandlerUpdate(EntHandler *handler, float dt) {
+	Entity *player_ent = &handler->ents[0];
+	PlayerData *p = player_ent->data;
 
-	Entity *player = &handler->ents[0];
-	PlayerData *p = player->data;
-	Vector2 player_center = Vector2Add(player->position, player->center_offset);
+	if(p->anchor_id > -1)	
+		EntOrbitUpdate(player_ent, &handler->ents[p->anchor_id], dt);
 
-	ray_start = player_center;
-	ray_end = Vector2Add(player_center, Vector2Scale(p->orbit_dir, 2000));
-
-	for(uint16_t i = 0; i < handler->count; i++) 
-	{
+	for(uint16_t i = 0; i < handler->count; i++) {
 		// Get entity pointer
 		Entity *ent = &handler->ents[i];
 
@@ -55,55 +55,15 @@ void EntHandlerUpdate(EntHandler *handler, float dt)
 
 		// Call entity's update function
 		if(ent->update) ent->update(ent, dt);
-
-		// Find nearest orbitable object to player 
-		if(!(ent->flags & ENT_IS_BODY)) continue;
-
-		if(player->flags & ENT_CAST_ORBIT)
-		{
-			if(CheckCollisionCircleLine(EntCenter(ent), ent->radius * 3.0f, player_center, ray_end))
-			{
-				//if(i == p->anchor_id) return;
-				//p->anchor_id = i;
-			}
-		}
-
-		float dist = Vector2Distance(EntCenter(ent), player_center);
-		if(dist < nearest_body_dist) 
-		{
-			nearest_body_id = i;
-			nearest_body_dist = dist;
-		}
 	}
-
-	if(nearest_body_id > -1) 
-	{
-		Entity *body = &handler->ents[nearest_body_id];
-		Vector2 body_center = EntCenter(body);
-
-		if(player->flags & ENT_ORBIT)
-			p->prev_anchor_id = p->anchor_id;
-
-		if(CheckCollisionCircles(player_center, player->radius, body_center, body->radius * 3)) 
-		{
-			//p->anchor_id = nearest_body_id;
-			
-			if(((player->flags & ENT_ORBIT) == 0) || p->anchor_id != nearest_body_id)
-			//if((player->flags & ENT_ORBIT) == 0)
-			{
-				EntOrbitStart(player, body);
-				p->anchor_id = nearest_body_id;
-			}
-		}
-
-		//PlayerPhysicsOrbit(player, body, dt);
-		EntOrbitUpdate(player, body, dt);
-	}
+	
+	FindPlayerOrbit(handler, dt);
 }
 
-void EntHandlerDraw(EntHandler *handler) 
-{
-	//DrawLine(ray_start.x, ray_start.y, ray_end.x, ray_end.y, WHITE);
+// Draw all entities
+void EntHandlerDraw(EntHandler *handler, uint8_t flags) {
+	if(flags & SHOW_DEBUG)
+		DrawLine(ray_start.x, ray_start.y, ray_end.x, ray_end.y, WHITE);
 
 	for(uint16_t i = 1; i < handler->count; i++) {
 		// Get entity pointer
@@ -115,12 +75,21 @@ void EntHandlerDraw(EntHandler *handler)
 		// Call entity's draw function
 		if(ent->draw) ent->draw(ent, handler->sprite_loader);
 	}
-	
-	handler->ents[0].draw(&handler->ents[0], handler->sprite_loader);
+
+	Entity *player_ent = &handler->ents[0];	
+	PlayerData *p = player_ent->data;
+
+	player_ent->draw(player_ent, handler->sprite_loader);
+	if(p->raycast_id > -1) {
+		Entity *cast_hit_body = &handler->ents[p->raycast_id];
+		DrawCircleLinesV(EntCenter(cast_hit_body), cast_hit_body->radius * 3, BLUE);
+		
+		DrawText(TextFormat("%d", p->raycast_id), player_ent->position.x, player_ent->position.y, 16, BLUE);	
+	}
 }
 
-int16_t EntMake(EntHandler *handler, uint8_t type) 
-{
+// Create a new entity and add to pool (corresponding to entity type)
+int16_t EntMake(EntHandler *handler, uint8_t type) {
 	// Get count for entity type
 	uint16_t *type_count = &handler->type_counts[type];
 	
@@ -149,8 +118,8 @@ int16_t EntMake(EntHandler *handler, uint8_t type)
 	return handler->count++;
 }
 
-void ReserveDataPlayer(EntHandler *handler, Entity *ent) 
-{
+// Reserve data for entity of type "player"
+void ReserveDataPlayer(EntHandler *handler, Entity *ent) {
 	// Get data index
 	uint16_t data_id = handler->type_counts[ENT_PLAYER];
 
@@ -163,8 +132,8 @@ void ReserveDataPlayer(EntHandler *handler, Entity *ent)
 	PlayerInit(ent, handler->sprite_loader, handler->camera);
 }
 
-void ReserveDataAsteroid(EntHandler *handler, Entity *ent) 
-{
+// Reserve data for entity of type "asteroid"
+void ReserveDataAsteroid(EntHandler *handler, Entity *ent) {
 	// Get data index
 	uint16_t data_id = handler->type_counts[ENT_ASTEROID];
 
@@ -176,8 +145,8 @@ void ReserveDataAsteroid(EntHandler *handler, Entity *ent)
 	ent->data = &handler->asteroid_data[data_id];
 }
 
-void ReserveDataFish(EntHandler *handler, Entity *ent) 
-{
+// Reserve data for entity of type "fish"
+void ReserveDataFish(EntHandler *handler, Entity *ent) {
 	// Get data index
 	uint16_t data_id = handler->type_counts[ENT_FISH];
 
@@ -189,8 +158,8 @@ void ReserveDataFish(EntHandler *handler, Entity *ent)
 	ent->data = &handler->fish_data[data_id];
 }
 
-void ReserveDataNpc(EntHandler *handler, Entity *ent) 
-{
+// Reserve data for entity of type "npc"
+void ReserveDataNpc(EntHandler *handler, Entity *ent) {
 	// Get data index
 	uint16_t data_id = handler->type_counts[ENT_NPC];
 
@@ -202,8 +171,8 @@ void ReserveDataNpc(EntHandler *handler, Entity *ent)
 	ent->data = &handler->fish_data[data_id];
 }
 
-void AsteroidSpawn(EntHandler *handler, Vector2 position) 
-{
+// Spawn an asteroid entity at provided position
+void AsteroidSpawn(EntHandler *handler, Vector2 position) {
 	int16_t id = EntMake(handler, ENT_ASTEROID);
 	if(id == -1) return;
 
@@ -212,5 +181,53 @@ void AsteroidSpawn(EntHandler *handler, Vector2 position)
 	ast->radius = handler->sprite_loader->spr_pool[1].frame_w * 0.5f;
 	ast->center_offset = (Vector2){ast->radius, ast->radius};
 	ast->flags |= ENT_IS_BODY;
+}
+
+void FindPlayerOrbit(EntHandler *handler, float dt) {
+	Entity *player_ent = &handler->ents[0];
+	PlayerData *p = player_ent->data;
+
+	Entity *orbit_body = NULL;
+
+	int16_t nearest_body_id = -1;
+	int16_t raycast_body_id = -1;
+
+	float shortest_dist = FLT_MAX, shortest_cast_dist = FLT_MAX;
+
+	ray_start = EntCenter(player_ent);
+	ray_end = Vector2Add(EntCenter(player_ent), Vector2Scale(p->orbit_dir, 2000)); 
+ 
+	for(uint16_t i = 0; i < handler->count; i++) {
+		Entity *body = &handler->ents[i];
+		if(!(body->flags & ENT_IS_BODY)) continue;
+	
+		float dist = Vector2Distance(EntCenter(player_ent), EntCenter(body));		
+		if(dist < shortest_dist) {
+			nearest_body_id = i;	
+			shortest_dist = dist;
+		}
+
+		if(CheckCollisionCircleLine(EntCenter(body), body->radius * 3, ray_start, ray_end)) {
+			if(p->anchor_id != i) {
+				raycast_body_id = i;
+			}
+		}
+	}
+
+	if(nearest_body_id > -1) {
+		orbit_body = &handler->ents[nearest_body_id];
+		
+		if(player_ent->flags & ENT_ORBIT)
+			p->prev_anchor_id = p->anchor_id;
+
+		if(CheckCollisionCircles(EntCenter(player_ent), player_ent->radius, EntCenter(orbit_body), orbit_body->radius * 3)) {
+			if(((player_ent->flags & ENT_ORBIT) == 0) || p->anchor_id != nearest_body_id) {
+				EntOrbitStart(player_ent, orbit_body);
+				p->anchor_id = nearest_body_id;
+			}
+		}
+	}
+
+	p->raycast_id = raycast_body_id;
 }
 

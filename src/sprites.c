@@ -2,18 +2,21 @@
 #include "raylib.h"
 #include "sprites.h"
 
-Spritesheet SpritesheetCreate(char *texture_path, Vector2 frame_dimensions) 
-{
+// Make a spritesheet 
+// texture is split into rectangles based on provided dimensions
+Spritesheet SpritesheetCreate(char *texture_path, Vector2 frame_dimensions) {
+	// Load base texture
 	Texture2D texture = LoadTexture(texture_path);
-	if(!IsTextureValid(texture)) 
-	{
+	if(!IsTextureValid(texture)) {
 		printf("file missing: %s\n", texture_path);	
 		return (Spritesheet){0};
 	}
 
+	// Calculate column and row count
 	uint8_t cols = texture.width  / frame_dimensions.x;
 	uint8_t rows = texture.height / frame_dimensions.y;
 	
+	// Return struct 
 	return (Spritesheet) {
 		.flags = (SPR_TEX_VALID),
 		.frame_w = frame_dimensions.x,
@@ -25,14 +28,14 @@ Spritesheet SpritesheetCreate(char *texture_path, Vector2 frame_dimensions)
 	};
 }
 
-void SpritesheetClose(Spritesheet *spritesheet) 
-{
+// Unload data, free allocated memory
+void SpritesheetClose(Spritesheet *spritesheet) {
 	UnloadTexture(spritesheet->texture);
 	spritesheet->flags &= ~SPR_ALLOCATED;
 }
 
-void DrawSprite(Spritesheet *spritesheet, uint8_t frame_index, Vector2 position, uint8_t flags) 
-{
+// Draw a spritesheet frame from base texture at provided position
+void DrawSprite(Spritesheet *spritesheet, uint8_t frame_index, Vector2 position, uint8_t flags) {
 	if(!(spritesheet->flags & SPR_TEX_VALID)) return;
 
 	Rectangle src_rec = GetFrameRec(frame_index, spritesheet);
@@ -42,8 +45,8 @@ void DrawSprite(Spritesheet *spritesheet, uint8_t frame_index, Vector2 position,
 	DrawTextureRec(spritesheet->texture, src_rec, position, WHITE);	
 }
 
-void DrawSpritePro(Spritesheet *spritesheet, uint8_t frame_index, Vector2 position, float rotation, uint8_t flags) 
-{
+// Draw a spritesheet frame from base texture at provided position (with rotation)
+void DrawSpritePro(Spritesheet *spritesheet, uint8_t frame_index, Vector2 position, float rotation, uint8_t flags) {
 	if(!(spritesheet->flags & SPR_TEX_VALID)) return;
 
 	Rectangle src_rec = GetFrameRec(frame_index, spritesheet);
@@ -67,13 +70,13 @@ void DrawSpritePro(Spritesheet *spritesheet, uint8_t frame_index, Vector2 positi
 	);
 }
 
-uint8_t FrameIndex(Spritesheet *spritesheet, uint8_t c, uint8_t r) 
-{
+// Find index of frame from it's column and row values
+uint8_t FrameIndex(Spritesheet *spritesheet, uint8_t c, uint8_t r) {
 	return (c + r * spritesheet->cols);
 }
 
-Rectangle GetFrameRec(uint8_t idx, Spritesheet *spritesheet) 
-{
+// Get rectangle data from frame index of spritesheet
+Rectangle GetFrameRec(uint8_t idx, Spritesheet *spritesheet) {
 	uint8_t c = idx % spritesheet->cols, r = idx / spritesheet->cols;
 
 	return (Rectangle) {
@@ -84,8 +87,8 @@ Rectangle GetFrameRec(uint8_t idx, Spritesheet *spritesheet)
 	};			
 }
 
-SpriteAnimation AnimCreate(Spritesheet *spritesheet, uint8_t start_frame, uint8_t frame_count, float speed) 
-{
+// Create a new sprite animation
+SpriteAnimation AnimCreate(Spritesheet *spritesheet, uint8_t start_frame, uint8_t frame_count, float speed) {
 	return (SpriteAnimation) {
 		.frame_count = frame_count,
 		.start_frame = start_frame,
@@ -96,12 +99,11 @@ SpriteAnimation AnimCreate(Spritesheet *spritesheet, uint8_t start_frame, uint8_
 	};
 }
 
-void AnimPlay(SpriteAnimation *anim, float delta_time) 
-{
+// Update sprite animation
+void AnimPlay(SpriteAnimation *anim, float delta_time) {
 	anim->timer += delta_time;
 
-	if(anim->timer >= anim->speed) 
-	{
+	if(anim->timer >= anim->speed) {
 		anim->cur_frame++;
 
 		if(anim->cur_frame - anim->start_frame > anim->frame_count - 1) 
@@ -111,21 +113,20 @@ void AnimPlay(SpriteAnimation *anim, float delta_time)
 	}
 }
 
-void AnimDraw(SpriteAnimation *anim, Vector2 position, uint8_t flags) 
-{
+// Draw current frame of provided sprite animation
+void AnimDraw(SpriteAnimation *anim, Vector2 position, uint8_t flags) {
 	DrawSprite(anim->spritesheet, anim->cur_frame, position, flags);
 }
 
-void AnimDrawPro(SpriteAnimation *anim, Vector2 position, float rotation, uint8_t flags) 
-{
+// Draw current frame of provided sprite animation (with rotation)
+void AnimDrawPro(SpriteAnimation *anim, Vector2 position, float rotation, uint8_t flags) {
 	DrawSpritePro(anim->spritesheet, anim->cur_frame, position, rotation, flags);
 }
 
-void LoadSpritesheet(char *tex_path, Vector2 frame_dimensions, SpriteLoader *sl) 
-{
+// Load a spritesheet, push to sprite stack
+void LoadSpritesheet(char *tex_path, Vector2 frame_dimensions, SpriteLoader *sl) {
 	Spritesheet ss = SpritesheetCreate(tex_path, frame_dimensions);	
-	if(!(ss.flags & SPR_TEX_VALID)) 
-	{
+	if(!(ss.flags & SPR_TEX_VALID)) {
 		printf("error: spritesheet[%d], missing texture\n", sl->spr_count);
 		return;
 	}
@@ -135,17 +136,16 @@ void LoadSpritesheet(char *tex_path, Vector2 frame_dimensions, SpriteLoader *sl)
 	sl->spr_pool[sl->spr_count++] = ss;
 } 
 
-void AddSpriteAnim(Spritesheet *spritesheet, uint8_t start_frame, uint8_t frame_count, float speed, SpriteLoader *sl) 
-{
+// Create a new sprite animation, push to animation stack
+void AddSpriteAnim(Spritesheet *spritesheet, uint8_t start_frame, uint8_t frame_count, float speed, SpriteLoader *sl) {
 	SpriteAnimation anim = AnimCreate(spritesheet, start_frame, frame_count, speed);
 	sl->anims[(sl->anim_count)++] = anim;
 }
 
-void SpriteLoaderClose(SpriteLoader *sl) 
-{
+// Unload spritesheets
+void SpriteLoaderClose(SpriteLoader *sl) {
 	uint16_t i = 0;
-	while(i < sl->spr_count) 
-	{
+	while(i < sl->spr_count) {
 		// Skip unallocated spritesheet slots
 		if(!(sl->spr_pool[i].flags & SPR_ALLOCATED)) continue;
 

@@ -53,22 +53,22 @@ void GameContentInit(Game *game);
 
 void GameUpdate(Game *game);
 
-void GameDrawToBuffer(Game *game);
+void GameDrawToBuffer(Game *game, uint8_t flags);
 void GameDrawToWindow(Game *game);
 
 void GameClose(Game *game);
 
 void TitleUpdate(Game *game, float delta_time);
-void TitleDraw(Game *game);
+void TitleDraw(Game *game, uint8_t flags);
 
 void MainUpdate(Game *game, float delta_time);
-void MainDraw(Game *game);
+void MainDraw(Game *game, uint8_t flags);
 
 void OverScreenUpdate(Game *game, float delta_time);
-void OverScreenDraw(Game *game);
+void OverScreenDraw(Game *game, uint8_t flags);
 
 void OptionsScreenUpdate(Game *game, float delta_time);
-void OptionsScreenDraw(Game *game);
+void OptionsScreenDraw(Game *game, uint8_t flags);
 
 void MainStart(Game *game);
 

@@ -92,6 +92,8 @@ typedef struct {
 	int16_t anchor_id;			// Index of anchored body, -1 for none
 	int16_t prev_anchor_id;		// Index of previous anchored body
 
+	int16_t raycast_id;	
+
 	float orbit_height;			// How far away entity should be from orbited body
 	float grav_force;
 
@@ -120,8 +122,8 @@ enum PLAYER_STATES {
 #define PLR_MAX_FALL_VEL	200.0f;
 
 #define PLR_JUMP_GRAV	   1000.0f		
-#define PLR_FALL_GRAV	   1000.0f
-#define PLR_CUT_GRAV	   1550.0f
+#define PLR_FALL_GRAV	    900.0f
+#define PLR_CUT_GRAV	   1850.0f
 
 void PlayerInit(Entity *player, SpriteLoader *sl, Camera2D *camera);
 void PlayerSpawn(Entity *player, Vector2 position);

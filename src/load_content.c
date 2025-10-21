@@ -5,8 +5,7 @@
 //typedef void(*SpriteLoadFunc)(Game *game);
 //typedef void(*AudioLoadFunc)(Game *game);
 
-void LoadSpritesAll(SpriteLoader *sl) 
-{
+void LoadSpritesAll(SpriteLoader *sl) {
 	puts("loading sprites...");
 
 	LoadSpritesheet("resources/player_sheet.png", (Vector2){64, 64}, sl);
